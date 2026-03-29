@@ -35,10 +35,18 @@ bool giveDeadlyOre(World* world, Player* player) {
 	StateGame::instanceObj.addChatMessage(player,"You recieved a gift!",0x00ff00);
 	return true;
 }
+bool giveAnything(World* world, Player* player) {
+	spawnEntityItem(world, Item::blueprints[glm::linearRand(0,(int)Item::blueprints.size())], 
+		5, player->pos);
+	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player, "You recieved something!", 0x00ff00);
+	return true;
+}
+
 bool giveGrass(World* world, Player* player) {
 	spawnEntityItem(world, "Midnight Grass", 1, player->pos);
 	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "You recieved a gift!", 0x00ff00);
+	StateGame::instanceObj.addChatMessage(player, "You recieved a treasure!", 0x00ff00);
 	return true;
 }
 bool tpUp(World* world, Player* player) {
@@ -83,7 +91,7 @@ bool spawnSpiders(World* world, Player* player) {
 		spawnEntity(world, entity);
 	}
 	AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "A clutter of spiders has appeared!", 0x00ff00);
+	StateGame::instanceObj.addChatMessage(player, "A clutter of spiders has appeared!", 0xff0000);
 	return true;
 }
 bool deleteItself(World* world, Player* player) {
@@ -91,6 +99,12 @@ bool deleteItself(World* world, Player* player) {
 	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	StateGame::instanceObj.addChatMessage(player, "No more fun for you!", 0x888888);
 	return false;
+}
+bool swapDayNight(World* world, Player* player) {
+	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player, "Time of day suddenly changed!", 0x0000ff);
+	StateGame::instanceObj.time = 1 - StateGame::instanceObj.time;
+	return true;
 }
 static float motionSicknessDuration = 0.0f;
 m4::Mat5 targetPlane = m4::Mat5::identity();
@@ -185,13 +199,15 @@ bool explode(World* world, Player* player)
 }
 std::vector<std::pair<ActionFunc, int>> absoluteWeights =
 {
-	{doNothing,15},
+	{swapDayNight,4},
+	{doNothing,24},
 	{tpUp,6},
-	{addMotionSickness,4},
+	{addMotionSickness,6},
 	{giveDeadlyOre,4},
-	{giveGrass,4},
+	{giveAnything,8},
+	{giveGrass,8},
 	{spawnButterflies,6},
-	{spawnSpiders,4},
+	{spawnSpiders,6},
 	{deleteItself,1},
 	{explode,2}
 };
