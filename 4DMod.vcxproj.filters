@@ -25,4 +25,9 @@
   <ItemGroup>
     <None Include="info.json5" />
   </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Sounds.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
 </Project>

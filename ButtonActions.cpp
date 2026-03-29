@@ -1,5 +1,6 @@
 #include <4dm.h>
 #include <glm/gtc/random.hpp>
+#include "Sounds.h"
 
 using namespace fdm;
 
@@ -31,15 +32,18 @@ using ActionFunc = std::function<bool(World*, Player*)>;
 bool giveDeadlyOre(World* world, Player* player) {
 	Console::printLine("ORE");
 	spawnEntityItem(world, "Deadly Ore", 10, player->pos);
+	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	return true;
 }
 bool giveGrass(World* world, Player* player) {
 	Console::printLine("GRASS");
 	spawnEntityItem(world, "Midnight Grass", 1, player->pos);
+	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	return true;
 }
 bool tpUp(World* world, Player* player) {
 	Console::printLine("UP");
+	AudioManager::playSound4D(windSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	player->pos += glm::vec4{0,50,0,0};
 	player->touchingGround = false;
 	player->currentBlock = glm::floor(player->pos);
@@ -56,6 +60,7 @@ bool spawnButterflies(World* world, Player* player) {
 			getAttributes("Butterfly"));
 		spawnEntity(world, entity);
 	}
+	AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	return true;
 }
 bool spawnSpiders(World* world, Player* player) {
@@ -75,11 +80,13 @@ bool spawnSpiders(World* world, Player* player) {
 			getAttributes("Spider"));
 		spawnEntity(world, entity);
 	}
+	AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	return true;
 }
 bool deleteItself(World* world, Player* player) {
 	Console::printLine("DELETE");
 	player->getSelectedHotbarSlot().release();
+	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	return false;
 }
 static float motionSicknessDuration = 0.0f;
@@ -87,10 +94,13 @@ m4::Mat5 targetPlane = m4::Mat5::identity();
 bool addMotionSickness(World* world, Player* player) {
 	Console::printLine("SICKNESS");
 	motionSicknessDuration += 10;
+	AudioManager::playSound4D(sickSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	return true;
 }
 bool explode(World* world, Player* player)
 {
+	Console::printLine("EXPLODE");
+
 	glm::vec4 explosionPos = player->pos;
 	float explosionRadius = 2.0f;
 	int radius = glm::ceil(explosionRadius);
@@ -168,11 +178,7 @@ bool explode(World* world, Player* player)
 		}
 	}
 
-	/*(SoLoud::handle soundHandle = AudioManager::playSound4D(
-		std::format("../../{}/assets/audio/explode.ogg", fdm::getModPath(fdm::modID)),
-		"ambience", explosionPos, { 0, 0, 0, 0 }
-	);
-	AudioManager::soloud.setRelativePlaySpeed(soundHandle, glm::linearRand(0.9f, 1.0f));*/
+	AudioManager::playSound4D(explosionSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	return true;
 }
 std::vector<std::pair<ActionFunc, int>> absoluteWeights =
@@ -185,7 +191,7 @@ std::vector<std::pair<ActionFunc, int>> absoluteWeights =
 	{spawnButterflies,6},
 	{spawnSpiders,3},
 	{deleteItself,1},
-	{explode,1000}
+	{explode,1}
 };
 std::map<int, ActionFunc, std::greater<int>> accumulatedWeights = {};
 int totalWeight = 0;
@@ -237,7 +243,7 @@ $hook(bool, ItemMaterial, action, World* world, Player* player, int action) {
 	if (self->name != "Funny Button") return original(self, world, player, action);
 	if (!action) return false;
 	
+	AudioManager::playSound4D(buttonPressSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+
 	return getRandomAction()(world, player);
 }
-
-

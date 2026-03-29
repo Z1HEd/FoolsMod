@@ -1,4 +1,5 @@
 #include <4dm.h>
+#include "Sounds.h"
 
 using namespace fdm;
 
@@ -7,6 +8,12 @@ initDLL
 
 std::vector<nlohmann::json> recipes = {};
 std::string buttonPressSound = "assets/SwitchSound.ogg";
+std::string explosionSound = "assets/ExplosionSound.ogg";
+std::string magicSound = "assets/MagicSound.ogg";
+std::string sickSound = "assets/SicknessSound.ogg";
+std::string spawnSound = "assets/SpawnSound.ogg";
+std::string windSound = "assets/WindSound.ogg";
+
 
 // Mangle main menu buttons
 $hook(void, StateTitleScreen,init, StateManager& s) {
@@ -99,8 +106,17 @@ void InitBlueprints() {
 }
 void InitSounds() {
 	buttonPressSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), buttonPressSound);
+	explosionSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), explosionSound);
+	windSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), windSound);
+	magicSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), magicSound);
+	sickSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), sickSound);
+	spawnSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), spawnSound);
 
-
+	if (!AudioManager::loadSound(explosionSound)) Console::printLine("Cannot load sound: ", explosionSound);
+	if (!AudioManager::loadSound(windSound)) Console::printLine("Cannot load sound: ", windSound);
+	if (!AudioManager::loadSound(spawnSound)) Console::printLine("Cannot load sound: ", spawnSound);
+	if (!AudioManager::loadSound(sickSound)) Console::printLine("Cannot load sound: ", sickSound);
+	if (!AudioManager::loadSound(magicSound)) Console::printLine("Cannot load sound: ", magicSound);
 	if (!AudioManager::loadSound(buttonPressSound)) Console::printLine("Cannot load sound: ", buttonPressSound);
 }
 $hook(void, StateIntro, init, StateManager& s)
