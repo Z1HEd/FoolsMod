@@ -1,5 +1,3 @@
-//#define DEBUG_CONSOLE // Uncomment this if you want a debug console to start. You can use the Console class to print. You can use Console::inStrings to get input.
-
 #include <4dm.h>
 
 using namespace fdm;
@@ -7,33 +5,104 @@ using namespace fdm;
 // Initialize the DLLMain
 initDLL
 
-$hook(void, StateGame, init, StateManager& s)
-{
-	// Your code that runs at first frame here (it calls when you load into the world)
+std::vector<nlohmann::json> recipes = {};
+std::string buttonPressSound = "assets/SwitchSound.ogg";
 
+// Render item material
+$hook(void, ItemTool, render, const glm::ivec2& pos)
+{
+	if (self->name != "Funny Button") return original(self, pos);
+	TexRenderer& tr = ItemTool::tr;
+	FontRenderer& fr = ItemMaterial::fr;
+
+	const Tex2D* ogTex = tr.texture; // remember the original texture
+
+	static std::string iconPath = "assets/RedButton.png";
+
+	tr.texture = ResourceManager::get(iconPath, true); // set to custom texture
+	tr.setClip(0, 0, 36, 36);
+	tr.setPos(pos.x, pos.y, 70, 72);
+	tr.render();
+	tr.texture = ogTex; // return to the original texture
+}
+
+// Mangle main menu buttons
+$hook(void, StateTitleScreen,init, StateManager& s) {
 	original(self, s);
+	self->singleplayerButton.callback = self->multiplayerplayerButtonCallback;
+	self->multiplayerButton.callback = self->quitGameButtonCallback;
+	self->tutorialButton.callback = self->creditsButtonCallback;
+	self->settingsButton.callback = self->singleplayerButtonCallback;
+	self->creditsButton.callback = self->tutorialButtonCallback;
+	self->quitButton.callback = self->settingsButtonCallback;
 }
 
-$hook(void, Player, update, World* world, double dt, EntityPlayer* entityPlayer)
+//Init stuff
+$hookStatic(void, CraftingMenu, loadRecipes)
 {
-	// Your code that runs every frame here (it only calls when you play in world, because its Player's function)
+	static bool recipesLoaded = false;
 
-	original(self, world, dt, entityPlayer);
+	if (recipesLoaded) return;
+
+	recipesLoaded = true;
+
+	original();
+
+	if (recipes.empty()) return;
+
+	for (const auto& recipe : recipes) {
+		if (std::any_of(CraftingMenu::recipes.begin(),
+			CraftingMenu::recipes.end(),
+			[&recipe](const nlohmann::json& globalRecipe) {
+				return globalRecipe == recipe;
+			})) continue;
+		CraftingMenu::recipes.push_back(recipe);
+	}
 }
+void addRecipe(const std::string& resultName, int resultCount,
+	const std::vector<std::pair<std::string, int>>& components) {
 
-$hook(bool, Player, keyInput, GLFWwindow* window, World* world, int key, int scancode, int action, int mods)
-{
-	// Your code that runs when Key Input happens (check GLFW Keyboard Input tutorials)|(it only calls when you play in world, because it is a Player function)
+	nlohmann::json recipeJson;
+	recipeJson["result"] = { {"name", resultName}, {"count", resultCount} };
 
-	return original(self, window, world, key, scancode, action, mods);
+	nlohmann::json recipeComponents = nlohmann::json::array();
+	for (const auto& [name, count] : components) {
+		recipeComponents.push_back({ {"name", name}, {"count", count} });
+	}
+
+	recipeJson["recipe"] = recipeComponents;
+	recipes.push_back(recipeJson);
 }
+void InitRecipes() {
 
+	addRecipe("Funny Button", 1, { {"Glass",1},{"Red Flower", 1}, {"Stone", 5} });
+}
+void InitBlueprints() {
+	(Item::blueprints)["Funny Button"] =
+	{
+		{ "type", "tool"},
+		{ "baseAttributes", nlohmann::json::object()}
+	};
+
+}
+void InitSounds() {
+	buttonPressSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), buttonPressSound);
+
+
+	if (!AudioManager::loadSound(buttonPressSound)) Console::printLine("Cannot load sound: ", buttonPressSound);
+}
 $hook(void, StateIntro, init, StateManager& s)
 {
 	original(self, s);
 
-	// initialize opengl stuff
+	//Initialize opengl stuff
 	glewExperimental = true;
 	glewInit();
 	glfwInit();
+
+	InitBlueprints();
+
+	InitRecipes();
+
+	InitSounds();
 }
