@@ -6,6 +6,7 @@ using namespace fdm;
 // Initialize the DLLMain
 initDLL
 
+MeshRenderer renderer{};
 std::vector<nlohmann::json> recipes = {};
 std::string buttonPressSound = "assets/SwitchSound.ogg";
 std::string explosionSound = "assets/ExplosionSound.ogg";
@@ -56,7 +57,56 @@ $hook(void, ItemMaterial, render, const glm::ivec2& pos)
 	tr.texture = ogTex; // return to the original texture
 }
 
-//Init stuff
+// Render button item
+
+$hook(void, ItemMaterial, renderEntity, const m4::Mat5& MV, bool inHand, const glm::vec4& lightDir) {
+	if (self->getName() != "Funny Button") return original(self, MV, inHand, lightDir);
+
+	Player* player = &StateGame::instanceObj.player;
+
+	m4::Mat5 baseMV = MV;
+	baseMV.translate(glm::vec4{ 0.0f, .6f, -0.5f, 0.001f });
+	baseMV *= m4::Rotor
+	(
+		{
+			m4::wedge({0, 0, 1, 0}, {0, 1, 0, 0}), // ZY
+			glm::pi<float>() / 3
+		}
+	);
+	baseMV.scale(glm::vec4{ 0.5f,.7f,0.25f,0.25f });
+	baseMV.translate(glm::vec4{ -0.5f, -0.5f, -0.5f, -0.5f });
+
+	m4::Mat5 buttonMV = MV;
+	buttonMV.translate(glm::vec4{ 0.0f, .6f, -0.5f, 0.001f });
+	buttonMV *= m4::Rotor
+	(
+		{
+			m4::wedge({0, 0, 1, 0}, {0, 1, 0, 0}), // ZY
+			glm::pi<float>() / 3
+		}
+	);
+	buttonMV.translate(glm::vec4{ 0.0f , 0.0f, 0.1f, 0.0f });
+	buttonMV.scale(glm::vec4{ 0.3f,.30f,0.2f,0.07f });
+	buttonMV.translate(glm::vec4{ -0.5f, -0.5f, -0.5f, -0.5f });
+
+	const Shader* shader = ShaderManager::get("tetSolidColorNormalShader");
+
+	shader->use();
+
+	glUniform4f(glGetUniformLocation(shader->id(), "lightDir"), lightDir.x, lightDir.y, lightDir.z, lightDir.w);
+	//IRON COLOR
+	glUniform4f(glGetUniformLocation(shader->id(), "inColor"), 111.0f / 255.0f, 110.0f / 255.0f, 109.0f / 255.0f, 1);
+	glUniform1fv(glGetUniformLocation(shader->id(), "MV"), sizeof(baseMV) / sizeof(float), &baseMV[0][0]);
+	renderer.render();
+
+	// RED COLOR
+	glUniform4f(glGetUniformLocation(shader->id(), "inColor"), 1, 0, 0, 1);
+	glUniform1fv(glGetUniformLocation(shader->id(), "MV"), sizeof(buttonMV) / sizeof(float), &buttonMV[0][0]);
+	renderer.render();
+
+}
+
+// Init stuff
 $hookStatic(void, CraftingMenu, loadRecipes)
 {
 	static bool recipesLoaded = false;
@@ -92,11 +142,11 @@ void addRecipe(const std::string& resultName, int resultCount,
 	recipeJson["recipe"] = recipeComponents;
 	recipes.push_back(recipeJson);
 }
-void InitRecipes() {
+void initRecipes() {
 
 	addRecipe("Funny Button", 1, { {"Glass",1},{"Red Flower", 1}, {"Stone", 5} });
 }
-void InitBlueprints() {
+void initBlueprints() {
 	(Item::blueprints)["Funny Button"] =
 	{
 		{ "type", "material"},
@@ -104,7 +154,7 @@ void InitBlueprints() {
 	};
 
 }
-void InitSounds() {
+void initSounds() {
 	buttonPressSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), buttonPressSound);
 	explosionSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), explosionSound);
 	windSound = std::format("../../{}/{}", fdm::getModPath(fdm::modID), windSound);
@@ -119,6 +169,19 @@ void InitSounds() {
 	if (!AudioManager::loadSound(magicSound)) Console::printLine("Cannot load sound: ", magicSound);
 	if (!AudioManager::loadSound(buttonPressSound)) Console::printLine("Cannot load sound: ", buttonPressSound);
 }
+void initRenderer() {
+	MeshBuilder mesh{ BlockInfo::HYPERCUBE_FULL_INDEX_COUNT };
+	// vertex position attribute
+	mesh.addBuff(BlockInfo::hypercube_full_verts, sizeof(BlockInfo::hypercube_full_verts));
+	mesh.addAttr(GL_UNSIGNED_BYTE, 4, sizeof(glm::u8vec4));
+	// per-cell normal attribute
+	mesh.addBuff(BlockInfo::hypercube_full_normals, sizeof(BlockInfo::hypercube_full_normals));
+	mesh.addAttr(GL_FLOAT, 1, sizeof(GLfloat));
+
+	mesh.setIndexBuff(BlockInfo::hypercube_full_indices, sizeof(BlockInfo::hypercube_full_indices));
+
+	renderer.setMesh(&mesh);
+}
 $hook(void, StateIntro, init, StateManager& s)
 {
 	original(self, s);
@@ -128,9 +191,10 @@ $hook(void, StateIntro, init, StateManager& s)
 	glewInit();
 	glfwInit();
 
-	InitBlueprints();
+	initBlueprints();
 
-	InitRecipes();
+	initRecipes();
 
-	InitSounds();
+	initSounds();
+	initRenderer();
 }
