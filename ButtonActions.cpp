@@ -95,7 +95,7 @@ bool deleteItself(World* world, Player* player) {
 static float motionSicknessDuration = 0.0f;
 m4::Mat5 targetPlane = m4::Mat5::identity();
 bool addMotionSickness(World* world, Player* player) {
-	motionSicknessDuration += 10;
+	motionSicknessDuration += 20;
 	AudioManager::playSound4D(sickSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	StateGame::instanceObj.addChatMessage(player, "You are feeling sick...", 0x008800);
 	return true;
@@ -189,11 +189,11 @@ std::vector<std::pair<ActionFunc, int>> absoluteWeights =
 	{tpUp,6},
 	{addMotionSickness,4},
 	{giveDeadlyOre,4},
-	{giveGrass,2},
+	{giveGrass,4},
 	{spawnButterflies,6},
-	{spawnSpiders,3},
+	{spawnSpiders,4},
 	{deleteItself,1},
-	{explode,1}
+	{explode,2}
 };
 std::map<int, ActionFunc, std::greater<int>> accumulatedWeights = {};
 int totalWeight = 0;
