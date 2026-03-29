@@ -30,28 +30,30 @@ nlohmann::json getAttributes(const std::string& name) {
 using ActionFunc = std::function<bool(World*, Player*)>;
 
 bool giveDeadlyOre(World* world, Player* player) {
-	Console::printLine("ORE");
 	spawnEntityItem(world, "Deadly Ore", 10, player->pos);
 	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player,"You recieved a gift!",0x00ff00);
 	return true;
 }
 bool giveGrass(World* world, Player* player) {
-	Console::printLine("GRASS");
 	spawnEntityItem(world, "Midnight Grass", 1, player->pos);
 	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player, "You recieved a gift!", 0x00ff00);
 	return true;
 }
 bool tpUp(World* world, Player* player) {
-	Console::printLine("UP");
 	AudioManager::playSound4D(windSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	player->pos += glm::vec4{0,50,0,0};
 	player->touchingGround = false;
 	player->currentBlock = glm::floor(player->pos);
+	StateGame::instanceObj.addChatMessage(player, "A strong wind lifts you up!", 0xffffff);
 	return true;
 }
-bool doNothing(World* world, Player* player) { Console::printLine("NOTHING"); return true;}
+bool doNothing(World* world, Player* player) { 
+	StateGame::instanceObj.addChatMessage(player, "Nothing happened...", 0x888888); 
+	return true;
+}
 bool spawnButterflies(World* world, Player* player) {
-	Console::printLine("BUTTERFLIES");
 	glm::vec4 offset = { 0, 1.5, 0, 0 };
 	glm::vec4 fixRenderingOffset = player->over * 0.0001f;
 	for (int i = 0;i < 5;i++) {
@@ -61,10 +63,10 @@ bool spawnButterflies(World* world, Player* player) {
 		spawnEntity(world, entity);
 	}
 	AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player, "A flutter of butterflies has appeared!", 0x0000ff);
 	return true;
 }
 bool spawnSpiders(World* world, Player* player) {
-	Console::printLine("SPIDERS");
 	std::vector<glm::vec4> offsets = {
 		{1,0,0,0},
 		{-1,0,0,0},
@@ -81,26 +83,25 @@ bool spawnSpiders(World* world, Player* player) {
 		spawnEntity(world, entity);
 	}
 	AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player, "A clutter of spiders has appeared!", 0x00ff00);
 	return true;
 }
 bool deleteItself(World* world, Player* player) {
-	Console::printLine("DELETE");
 	player->getSelectedHotbarSlot().release();
 	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player, "No more fun for you!", 0x888888);
 	return false;
 }
 static float motionSicknessDuration = 0.0f;
 m4::Mat5 targetPlane = m4::Mat5::identity();
 bool addMotionSickness(World* world, Player* player) {
-	Console::printLine("SICKNESS");
 	motionSicknessDuration += 10;
 	AudioManager::playSound4D(sickSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player, "You are feeling sick...", 0x008800);
 	return true;
 }
 bool explode(World* world, Player* player)
 {
-	Console::printLine("EXPLODE");
-
 	glm::vec4 explosionPos = player->pos;
 	float explosionRadius = 2.0f;
 	int radius = glm::ceil(explosionRadius);
@@ -179,6 +180,7 @@ bool explode(World* world, Player* player)
 	}
 
 	AudioManager::playSound4D(explosionSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+	StateGame::instanceObj.addChatMessage(player, "You have spontaneously exploded!", 0xff0000);
 	return true;
 }
 std::vector<std::pair<ActionFunc, int>> absoluteWeights =
