@@ -9,5 +9,6 @@
   externalDLLs: [
   ],
   dependencies: {
+	"zihed.betterui" : "? before"
   },
 }

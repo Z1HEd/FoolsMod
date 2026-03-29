@@ -8,8 +8,31 @@ initDLL
 std::vector<nlohmann::json> recipes = {};
 std::string buttonPressSound = "assets/SwitchSound.ogg";
 
+// Mangle main menu buttons
+$hook(void, StateTitleScreen,init, StateManager& s) {
+	original(self, s);
+	/*
+	auto singleplayerCallback = self->singleplayerButton.callback;
+	auto multiplayerCallback = self->multiplayerButton.callback;
+	auto tutorialCallback = self->tutorialButton.callback;
+	auto settingsCallback = self->settingsButton.callback;
+	auto creditsCallback = self->creditsButton.callback;
+	auto quitCallback = self->quitButton.callback;
+
+	self->singleplayerButton.callback = quitCallback;
+	self->multiplayerButton.callback = creditsCallback;
+	self->tutorialButton.callback = multiplayerCallback;
+	self->settingsButton.callback = singleplayerCallback;
+	self->creditsButton.callback = tutorialCallback;
+	self->quitButton.callback = settingsCallback;*/
+}
+
+// Button press detection
+
+
+
 // Render item material
-$hook(void, ItemTool, render, const glm::ivec2& pos)
+$hook(void, ItemMaterial, render, const glm::ivec2& pos)
 {
 	if (self->name != "Funny Button") return original(self, pos);
 	TexRenderer& tr = ItemTool::tr;
@@ -24,17 +47,6 @@ $hook(void, ItemTool, render, const glm::ivec2& pos)
 	tr.setPos(pos.x, pos.y, 70, 72);
 	tr.render();
 	tr.texture = ogTex; // return to the original texture
-}
-
-// Mangle main menu buttons
-$hook(void, StateTitleScreen,init, StateManager& s) {
-	original(self, s);
-	self->singleplayerButton.callback = self->multiplayerplayerButtonCallback;
-	self->multiplayerButton.callback = self->quitGameButtonCallback;
-	self->tutorialButton.callback = self->creditsButtonCallback;
-	self->settingsButton.callback = self->singleplayerButtonCallback;
-	self->creditsButton.callback = self->tutorialButtonCallback;
-	self->quitButton.callback = self->settingsButtonCallback;
 }
 
 //Init stuff
@@ -80,7 +92,7 @@ void InitRecipes() {
 void InitBlueprints() {
 	(Item::blueprints)["Funny Button"] =
 	{
-		{ "type", "tool"},
+		{ "type", "material"},
 		{ "baseAttributes", nlohmann::json::object()}
 	};
 
