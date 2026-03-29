@@ -36,8 +36,9 @@ bool giveDeadlyOre(World* world, Player* player) {
 	return true;
 }
 bool giveAnything(World* world, Player* player) {
-	spawnEntityItem(world, Item::blueprints[glm::linearRand(0,(int)Item::blueprints.size())], 
-		5, player->pos);
+	auto it = Item::blueprints.begin();
+	std::advance(it, glm::linearRand(0, (int)Item::blueprints.size()));
+	spawnEntityItem(world, it.key(), 5, player->pos);
 	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 	StateGame::instanceObj.addChatMessage(player, "You recieved something!", 0x00ff00);
 	return true;
