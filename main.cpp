@@ -35,10 +35,6 @@ $hook(void, StateTitleScreen,init, StateManager& s) {
 	self->quitButton.callback = settingsCallback;
 }
 
-// Button press detection
-
-
-
 // Render item material
 $hook(void, ItemMaterial, render, const glm::ivec2& pos)
 {
