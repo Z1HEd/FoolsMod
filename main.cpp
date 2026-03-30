@@ -19,7 +19,7 @@ std::string windSound = "assets/WindSound.ogg";
 // Mangle main menu buttons
 $hook(void, StateTitleScreen,init, StateManager& s) {
 	original(self, s);
-	/*
+	
 	auto singleplayerCallback = self->singleplayerButton.callback;
 	auto multiplayerCallback = self->multiplayerButton.callback;
 	auto tutorialCallback = self->tutorialButton.callback;
@@ -32,7 +32,7 @@ $hook(void, StateTitleScreen,init, StateManager& s) {
 	self->tutorialButton.callback = multiplayerCallback;
 	self->settingsButton.callback = singleplayerCallback;
 	self->creditsButton.callback = tutorialCallback;
-	self->quitButton.callback = settingsCallback;*/
+	self->quitButton.callback = settingsCallback;
 }
 
 // Button press detection
