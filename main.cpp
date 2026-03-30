@@ -107,27 +107,6 @@ $hook(void, ItemMaterial, renderEntity, const m4::Mat5& MV, bool inHand, const g
 }
 
 // Init stuff
-$hookStatic(void, CraftingMenu, loadRecipes)
-{
-	static bool recipesLoaded = false;
-
-	if (recipesLoaded) return;
-
-	recipesLoaded = true;
-
-	original();
-
-	if (recipes.empty()) return;
-
-	for (const auto& recipe : recipes) {
-		if (std::any_of(CraftingMenu::recipes.begin(),
-			CraftingMenu::recipes.end(),
-			[&recipe](const nlohmann::json& globalRecipe) {
-				return globalRecipe == recipe;
-			})) continue;
-		CraftingMenu::recipes.push_back(recipe);
-	}
-}
 void addRecipe(const std::string& resultName, int resultCount,
 	const std::vector<std::pair<std::string, int>>& components) {
 
@@ -191,10 +170,39 @@ $hook(void, StateIntro, init, StateManager& s)
 	glewInit();
 	glfwInit();
 
-	initBlueprints();
-
-	initRecipes();
-
 	initSounds();
 	initRenderer();
+}
+$hookStatic(bool, Item, loadItemInfo)
+{
+	bool result = original();
+
+	static bool loaded = false;
+	if (loaded) return result;
+	loaded = true;
+
+	initBlueprints();
+
+	return result;
+}
+$hookStatic(bool, CraftingMenu, loadRecipes)
+{
+	bool result = original();
+
+	static bool loaded = false;
+	if (loaded) return result;
+	loaded = true;
+	initRecipes();
+
+	if (recipes.empty()) return result;
+
+	for (const auto& recipe : recipes) {
+		if (std::any_of(CraftingMenu::recipes.begin(),
+			CraftingMenu::recipes.end(),
+			[&recipe](const nlohmann::json& globalRecipe) {
+				return globalRecipe == recipe;
+			})) continue;
+		CraftingMenu::recipes.push_back(recipe);
+	}
+	return result;
 }

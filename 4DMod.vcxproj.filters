@@ -29,5 +29,11 @@
     <ClInclude Include="Sounds.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="JSONData.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="JSONPacket.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

@@ -1,8 +1,24 @@
 #include <4dm.h>
 #include <glm/gtc/random.hpp>
 #include "Sounds.h"
+#include "JSONData.h"
+#include "JSONPacket.h"
 
 using namespace fdm;
+
+enum ActionType : int {
+	NOTHING,
+	TP_UP,
+	GIVE_ORE,
+	GIVE_ANYTHING,
+	GIVE_GRASS,
+	SPAWN_SPIDERS,
+	SPAWN_BUTTERFLY,
+	EXPLODE,
+	ADD_SICKNESS,
+	SWAP_DAYNIGHT,
+	SELF_DELETE
+};
 
 // Helper stuff
 inline static void spawnEntity(World* world, std::unique_ptr<Entity>& entity) {
@@ -27,119 +43,145 @@ nlohmann::json getAttributes(const std::string& name) {
 	else return nlohmann::json::object();
 }
 // Init
-using ActionFunc = std::function<bool(World*, Player*)>;
+using ActionFunc = std::function<void(World*, Player*)>;
 
-bool giveDeadlyOre(World* world, Player* player) {
-	spawnEntityItem(world, "Deadly Ore", 10, player->pos);
-	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player,"You recieved a gift!",0x00ff00);
-	return true;
-}
-bool giveAnything(World* world, Player* player) {
-	auto it = Item::blueprints.begin();
-	std::advance(it, glm::linearRand(0, (int)Item::blueprints.size()));
-	spawnEntityItem(world, it.key(), 5, player->pos);
-	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "You recieved something!", 0x00ff00);
-	return true;
-}
-
-bool giveGrass(World* world, Player* player) {
-	spawnEntityItem(world, "Midnight Grass", 1, player->pos);
-	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "You recieved a treasure!", 0x00ff00);
-	return true;
-}
-bool tpUp(World* world, Player* player) {
-	AudioManager::playSound4D(windSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	player->pos += glm::vec4{0,50,0,0};
-	player->touchingGround = false;
-	player->currentBlock = glm::floor(player->pos);
-	StateGame::instanceObj.addChatMessage(player, "A strong wind lifts you up!", 0xffffff);
-	return true;
-}
-bool doNothing(World* world, Player* player) { 
-	StateGame::instanceObj.addChatMessage(player, "Nothing happened...", 0x888888); 
-	return true;
-}
-bool spawnButterflies(World* world, Player* player) {
-	glm::vec4 offset = { 0, 1.5, 0, 0 };
-	glm::vec4 fixRenderingOffset = player->over * 0.0001f;
-	for (int i = 0;i < 5;i++) {
-		std::unique_ptr<Entity> entity = Entity::createWithAttributes("Butterfly", 
-			player->pos+ offset + fixRenderingOffset,
-			getAttributes("Butterfly"));
-		spawnEntity(world, entity);
+void giveDeadlyOre(World* world, Player* player) {
+	if (world->getType() != World::TYPE_CLIENT)
+		spawnEntityItem(world, "Deadly Ore", 10, player->pos);
+	if (world->getType() != World::TYPE_SERVER) {
+		AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "You recieved a gift!", 0x00ff00);
 	}
-	AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "A flutter of butterflies has appeared!", 0x0000ff);
-	return true;
 }
-bool spawnSpiders(World* world, Player* player) {
-	std::vector<glm::vec4> offsets = {
-		{1,0,0,0},
-		{-1,0,0,0},
-		{0,0,1,0},
-		{0,0,-1,0},
-		{0,0,0,1},
-		{0,0,0,-1}
-	};
-	glm::vec4 fixRenderingOffset = player->over * 0.0001f;
-	for (int i = 0;i < 5;i++) {
-		std::unique_ptr<Entity> entity = Entity::createWithAttributes("Spider", 
-			player->pos + offsets[i] + fixRenderingOffset,
-			getAttributes("Spider"));
-		spawnEntity(world, entity);
+void giveAnything(World* world, Player* player) {
+	if (world->getType() != World::TYPE_CLIENT) {
+		auto it = Item::blueprints.begin();
+		std::advance(it, glm::linearRand(0, (int)Item::blueprints.size()-1));
+		spawnEntityItem(world, it.key(), 5, player->pos);
 	}
-	AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "A clutter of spiders has appeared!", 0xff0000);
-	return true;
+	if (world->getType() != World::TYPE_SERVER) {
+		AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "You recieved something!", 0x00ff00);
+	}
 }
-bool deleteItself(World* world, Player* player) {
-	player->getSelectedHotbarSlot().release();
-	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "No more fun for you!", 0x888888);
-	return false;
+void giveGrass(World* world, Player* player) {
+	if (world->getType() != World::TYPE_CLIENT) {
+		spawnEntityItem(world, "Midnight Grass", 1, player->pos);
+	}
+	if (world->getType() != World::TYPE_SERVER) {
+		AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "You recieved a treasure!", 0x00ff00);
+	}
 }
-bool swapDayNight(World* world, Player* player) {
-	AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "Time of day suddenly changed!", 0x0000ff);
-	StateGame::instanceObj.time = 1 - StateGame::instanceObj.time;
-	return true;
+void tpUp(World* world, Player* player) {
+	if (world->getType() != World::TYPE_SERVER) {
+		AudioManager::playSound4D(windSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		player->pos += glm::vec4{ 0,50,0,0 };
+		player->touchingGround = false;
+		player->currentBlock = glm::floor(player->pos);
+		StateGame::instanceObj.addChatMessage(player, "A strong wind lifts you up!", 0xffffff);
+	}
+}
+void doNothing(World* world, Player* player) {
+	if (world->getType() != World::TYPE_SERVER)
+		StateGame::instanceObj.addChatMessage(player, "Nothing happened...", 0x888888); 
+}
+void spawnButterflies(World* world, Player* player) {
+	if (world->getType() != World::TYPE_CLIENT) {
+		glm::vec4 offset = { 0, 1.5, 0, 0 };
+		glm::vec4 fixRenderingOffset = player->over * 0.0001f;
+		for (int i = 0;i < 5;i++) {
+			std::unique_ptr<Entity> entity = Entity::createWithAttributes("Butterfly",
+				player->pos + offset + fixRenderingOffset,
+				getAttributes("Butterfly"));
+			spawnEntity(world, entity);
+		}
+	}
+	if (world->getType() != World::TYPE_SERVER) {
+		AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "A flutter of butterflies has appeared!", 0x0000ff);
+	}
+}
+void spawnSpiders(World* world, Player* player) {
+	if (world->getType() != World::TYPE_CLIENT) {
+		std::vector<glm::vec4> offsets = {
+			{1,0,0,0},
+			{-1,0,0,0},
+			{0,0,1,0},
+			{0,0,-1,0},
+			{0,0,0,1},
+			{0,0,0,-1}
+		};
+		glm::vec4 fixRenderingOffset = player->over * 0.0001f;
+		for (int i = 0;i < 5;i++) {
+			std::unique_ptr<Entity> entity = Entity::createWithAttributes("Spider",
+				player->pos + offsets[i] + fixRenderingOffset,
+				getAttributes("Spider"));
+			spawnEntity(world, entity);
+		}
+	}
+	if (world->getType() != World::TYPE_SERVER) {
+		AudioManager::playSound4D(spawnSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "A clutter of spiders has appeared!", 0xff0000);
+	}
+}
+void deleteItself(World* world, Player* player) {
+	if (world->getType() != World::TYPE_CLIENT)
+		player->getSelectedHotbarSlot().release();
+	if (world->getType() == World::TYPE_SERVER) // Sync the inventory if its a server
+	{
+		auto* server = (WorldServer*)world;
+		nlohmann::json invJson = player->saveInventory();
+		if (server->entityPlayerIDs.contains(player->EntityPlayerID))
+			server->sendMessagePlayer({ Packet::S_INVENTORY_UPDATE, invJson.dump() }, server->entityPlayerIDs.at(player->EntityPlayerID), true);
+	}
+	else{
+		AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "No more fun for you!", 0x888888);
+	}
+}
+void swapDayNight(World* world, Player* player) {
+	StateGame::instanceObj.time = StateGame::instanceObj.time + 0.5;
+	if (world->getType() != World::TYPE_SERVER) {
+		AudioManager::playSound4D(magicSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "Time of day suddenly changed!", 0x0000ff);
+	}
 }
 static float motionSicknessDuration = 0.0f;
 m4::Mat5 targetPlane = m4::Mat5::identity();
-bool addMotionSickness(World* world, Player* player) {
-	motionSicknessDuration += 20;
-	AudioManager::playSound4D(sickSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "You are feeling sick...", 0x008800);
-	return true;
+void addMotionSickness(World* world, Player* player) {
+	if (world->getType() != World::TYPE_SERVER) {
+		motionSicknessDuration += 20;
+		AudioManager::playSound4D(sickSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "You are feeling sick...", 0x008800);
+	}
 }
-bool explode(World* world, Player* player)
+void explode(World* world, Player* player)
 {
 	glm::vec4 explosionPos = player->pos;
 	float explosionRadius = 2.0f;
 	int radius = glm::ceil(explosionRadius);
 	float maxDamage = 160;
 	glm::ivec4 centerBlock = glm::ivec4(glm::round(explosionPos));
-
-	// destroy blocks in 4D sphere
-	for (int x = -radius; x <= radius; x++)
-	{
-		for (int y = -radius; y <= radius; y++)
+	if (world->getType() != World::TYPE_CLIENT) {
+		// destroy blocks in 4D sphere
+		for (int x = -radius; x <= radius; x++)
 		{
-			for (int z = -radius; z <= radius; z++)
+			for (int y = -radius; y <= radius; y++)
 			{
-				for (int w = -radius; w <= radius; w++)
+				for (int z = -radius; z <= radius; z++)
 				{
-					float dist = sqrt(x * x + y * y + z * z + w * w);
-					if (dist > explosionRadius) continue;
+					for (int w = -radius; w <= radius; w++)
+					{
+						float dist = sqrt(x * x + y * y + z * z + w * w);
+						if (dist > explosionRadius) continue;
 
-					glm::ivec4 blockPos = centerBlock + glm::ivec4(x, y, z, w);
-					uint8_t block = world->getBlock(blockPos);
+						glm::ivec4 blockPos = centerBlock + glm::ivec4(x, y, z, w);
+						uint8_t block = world->getBlock(blockPos);
 
-					if (block != BlockInfo::AIR && block != BlockInfo::BARRIER)
-						world->setBlockUpdate(blockPos, BlockInfo::AIR);
+						if (block != BlockInfo::AIR && block != BlockInfo::BARRIER)
+							world->setBlockUpdate(blockPos, BlockInfo::AIR);
+					}
 				}
 			}
 		}
@@ -161,6 +203,7 @@ bool explode(World* world, Player* player)
 					);
 					if (!chunk) continue;
 
+					std::lock_guard lock{ world->entitiesMutex };
 					for (auto& entity : chunk->entities)
 					{
 						if (!entity || entity->dead) continue;
@@ -180,41 +223,55 @@ bool explode(World* world, Player* player)
 
 						glm::vec4 knockbackVel = knockbackDir * 10.0f * strength;
 
-						if (entity->getName() == "Player")
+						if (entity->getName() == "Player" && world->getType() != World::TYPE_SERVER)
 						{
 							EntityPlayer* entityPlayer = reinterpret_cast<EntityPlayer*>(entity);
 							if (entityPlayer->player)
 								entityPlayer->player->vel += knockbackVel;
 						}
-
-						entity->takeDamage(maxDamage * strength, world);
+						if (world->getType() != World::TYPE_CLIENT)
+							entity->takeDamage(maxDamage * strength, world);
 					}
 				}
 			}
 		}
 	}
-
-	AudioManager::playSound4D(explosionSound, "ambience", player->cameraPos, glm::vec4{ 0 });
-	StateGame::instanceObj.addChatMessage(player, "You have spontaneously exploded!", 0xff0000);
-	return true;
+	
+	if (world->getType() != World::TYPE_SERVER) {
+		AudioManager::playSound4D(explosionSound, "ambience", player->cameraPos, glm::vec4{ 0 });
+		StateGame::instanceObj.addChatMessage(player, "You have spontaneously exploded!", 0xff0000);
+	}
 }
-std::vector<std::pair<ActionFunc, int>> absoluteWeights =
+std::vector<std::pair<ActionType, int>> absoluteWeights =
 {
-	{swapDayNight,4},
-	{doNothing,24},
-	{tpUp,6},
-	{addMotionSickness,6},
-	{giveDeadlyOre,4},
-	{giveAnything,8},
-	{giveGrass,8},
-	{spawnButterflies,6},
-	{spawnSpiders,6},
-	{deleteItself,1},
-	{explode,2}
+	{SWAP_DAYNIGHT,4},
+	{NOTHING,24},
+	{TP_UP,6},
+	{ADD_SICKNESS,6},
+	{GIVE_ORE,4},
+	{GIVE_ANYTHING,8},
+	{GIVE_GRASS,8},
+	{SPAWN_BUTTERFLY,6},
+	{SPAWN_SPIDERS,6},
+	{SELF_DELETE,1},
+	{EXPLODE,2}
 };
-std::map<int, ActionFunc, std::greater<int>> accumulatedWeights = {};
+std::map<int, ActionType, std::greater<int>> accumulatedWeights = {};
 int totalWeight = 0;
 bool initialized = false;
+std::unordered_map<ActionType, ActionFunc> callbacks = {
+	{SWAP_DAYNIGHT,swapDayNight},
+	{NOTHING,doNothing},
+	{TP_UP,tpUp},
+	{ADD_SICKNESS,addMotionSickness},
+	{GIVE_ORE,giveDeadlyOre},
+	{GIVE_ANYTHING,giveAnything},
+	{GIVE_GRASS,giveGrass},
+	{SPAWN_BUTTERFLY,spawnButterflies},
+	{SPAWN_SPIDERS,spawnSpiders},
+	{SELF_DELETE,deleteItself},
+	{EXPLODE,explode}
+};
 
 void initialize() {
 	std::sort(absoluteWeights.begin(), absoluteWeights.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
@@ -243,12 +300,14 @@ $hook(void,WorldManager, render, const m4::Mat5& MV, bool glasses, glm::vec3 wor
 $hook(void, Player, update, World* world, double dt, EntityPlayer* entityPlayer) {
 	original(self, world, dt, entityPlayer);
 	
-	if (self == &StateGame::instanceObj.player && motionSicknessDuration > 0)
+	if (world->getType() != World::TYPE_SERVER && 
+		self == &StateGame::instanceObj.player && 
+		motionSicknessDuration > 0)
 		motionSicknessDuration -= dt;
 }
 
 //Applying actions
-ActionFunc getRandomAction() {
+ActionType getRandomAction() {
 	if (!initialized) initialize();
 	int t = glm::linearRand(0,totalWeight);
 
@@ -257,12 +316,28 @@ ActionFunc getRandomAction() {
 	if (it == accumulatedWeights.end()) return std::prev(it)->second;
 	return std::prev(it)->second;
 }
-
 $hook(bool, ItemMaterial, action, World* world, Player* player, int action) {
 	if (self->name != "Funny Button") return original(self, world, player, action);
 	if (!action) return false;
 	
 	AudioManager::playSound4D(buttonPressSound, "ambience", player->cameraPos, glm::vec4{ 0 });
 
-	return getRandomAction()(world, player);
+	ActionType type = getRandomAction();
+	if (world->getType() == World::TYPE_SERVER && ((WorldServer*)world)->entityPlayerIDs.contains(player->EntityPlayerID)) {
+		JSONData::sendPacketClient((WorldServer*)world, JSONPacket::S_FUNNY,
+			{ {"type", type} }, ((WorldServer*)world)->entityPlayerIDs[player->EntityPlayerID]->handle);
+	}
+	callbacks[type](world, player);
+	return type != ActionType::SELF_DELETE;
+}
+
+// Multiplayer stuff
+// Client - side
+$hook(void, StateIntro, init, StateManager& s) {
+	original(self, s);
+	JSONData::SCaddPacketCallback(JSONPacket::S_FUNNY, [](WorldClient* world, Player* player, const nlohmann::json& data)
+		{
+			callbacks[data["type"]](world, player);
+		}
+	);
 }
