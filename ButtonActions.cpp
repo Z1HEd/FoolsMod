@@ -24,7 +24,10 @@ enum ActionType : int {
 inline static void spawnEntity(World* world, std::unique_ptr<Entity>& entity) {
 	glm::vec4 entityPos = entity->getPos();
 	Chunk* chunk = world->getChunkFromCoords(entityPos.x, entityPos.z, entityPos.w);
-	if (chunk) world->addEntityToChunk(entity, chunk);
+	if (chunk) {
+		std::lock_guard lock { world->entitiesMutex };
+		world->addEntityToChunk(entity, chunk);
+	}
 }
 inline static void spawnEntityItem(World* world, const std::string& itemName, const int& count, const  glm::vec4& position) {
 	std::unique_ptr<Entity> spawnedEntity = EntityItem::createWithItem(
